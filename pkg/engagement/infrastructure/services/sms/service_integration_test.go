@@ -6,8 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/savannahghi/authutils"
 	"github.com/savannahghi/engagementcore/pkg/engagement/application/common/dto"
 	db "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/database/firestore"
+	serviceAuthServer "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/authserver"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/messaging"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/sms"
 	"github.com/savannahghi/enumutils"
@@ -36,7 +38,21 @@ func newTestSMSService() (*sms.ServiceSMSImpl, error) {
 			err,
 		)
 	}
-	return sms.NewService(fr, ps), nil
+	silCommsConfig := authutils.Config{
+		AuthServerEndpoint: serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_DOMAIN"),
+		ClientID:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_CLIENT_ID"),
+		ClientSecret:       serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_CLIENT_SECRET"),
+		GrantType:          serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_GRANT_TYPE"),
+		Username:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_USERNAME"),
+		Password:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_PASSWORD"),
+	}
+
+	silCommsAuthService, err := serviceAuthServer.NewServiceAuthServer(silCommsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return sms.NewService(fr, ps, silCommsAuthService), nil
 }
 
 func TestSendToMany(t *testing.T) {

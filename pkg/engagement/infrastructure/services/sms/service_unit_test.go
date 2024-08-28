@@ -8,6 +8,7 @@ import (
 	"github.com/savannahghi/engagementcore/pkg/engagement/application/common/dto"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/database"
 	repositoryMock "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/database/mock"
+	authServerMock "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/authserver/mock"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/messaging"
 	pubSubMock "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/messaging/mock"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/sms"
@@ -23,9 +24,10 @@ var fakePubsub pubSubMock.FakeServiceMessaging
 var pubsub messaging.NotificationService = &fakePubsub
 var fakeSMS smsMock.FakeServiceSMS
 var fakeTwilio twilioMock.FakeServiceTwilio
+var fakeAuthserver authServerMock.AuthServerServiceMock
 
 func TestServiceSMSImpl_SendToMany(t *testing.T) {
-	e := sms.NewService(databaseSvc, pubsub)
+	e := sms.NewService(databaseSvc, pubsub, fakeAuthserver)
 	ctx := context.Background()
 
 	sender := "UNKNOWN"
@@ -122,7 +124,7 @@ func TestServiceSMSImpl_SendToMany(t *testing.T) {
 }
 
 func TestServiceSMSImpl_Send(t *testing.T) {
-	e := sms.NewService(databaseSvc, pubsub)
+	e := sms.NewService(databaseSvc, pubsub, fakeAuthserver)
 	ctx := context.Background()
 	type args struct {
 		ctx     context.Context

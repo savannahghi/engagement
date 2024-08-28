@@ -3,7 +3,10 @@ package infrastructure
 import (
 	"context"
 
+	serviceAuthServer "github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/authserver"
+
 	"github.com/labstack/gommon/log"
+	"github.com/savannahghi/authutils"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/database"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/fcm"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/feedback"
@@ -60,7 +63,21 @@ func NewInteractor() Interactor {
 		log.Fatal(err)
 	}
 
-	sms := sms.NewService(db, pubsub)
+	silCommsConfig := authutils.Config{
+		AuthServerEndpoint: serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_DOMAIN"),
+		ClientID:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_CLIENT_ID"),
+		ClientSecret:       serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_CLIENT_SECRET"),
+		GrantType:          serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_GRANT_TYPE"),
+		Username:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_USERNAME"),
+		Password:           serverutils.MustGetEnvVar("SIL_COMMS_AUTHSERVER_PASSWORD"),
+	}
+
+	silCommsAuthService, err := serviceAuthServer.NewServiceAuthServer(silCommsConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sms := sms.NewService(db, pubsub, silCommsAuthService)
 	twilio := twilio.NewService(*sms, db)
 
 	uploads := uploads.NewUploadsService()
