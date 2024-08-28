@@ -3,8 +3,8 @@ package sms
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/savannahghi/authutils"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/database"
 	"github.com/savannahghi/engagementcore/pkg/engagement/infrastructure/services/messaging"
 	"github.com/savannahghi/silcomms"
@@ -26,6 +26,13 @@ type ServiceSMS interface {
 	) (*silcomms.BulkSMSResponse, error)
 }
 
+// AuthServerImpl defines the methods provided by
+// the auth server library
+type AuthServerImpl interface {
+	LoginUser(ctx context.Context, input *authutils.LoginUserPayload) (*authutils.OAUTHResponse, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*authutils.OAUTHResponse, error)
+}
+
 // ServiceSMSImpl defines a sms service struct
 type ServiceSMSImpl struct {
 	SILComms silcomms.CommsLib
@@ -35,14 +42,11 @@ type ServiceSMSImpl struct {
 func NewService(
 	repository database.Repository,
 	pubsub messaging.NotificationService,
+	authService AuthServerImpl,
 ) *ServiceSMSImpl {
-	silSmsService, err := silcomms.NewSILCommsLib()
-	if err != nil {
-		log.Panicf(
-			"unable to initialize SilComms Library for sending sms: %s", err)
-	}
+	silCommsLib := silcomms.MustNewSILCommsLib(authService)
 	return &ServiceSMSImpl{
-		*silSmsService,
+		*silCommsLib,
 	}
 }
 
