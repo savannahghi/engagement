@@ -182,8 +182,15 @@ func (s ServiceUploadImpl) Upload(
 	defer cancel()
 
 	objectName := fmt.Sprintf("%s-%s", xid.New(), inp.Filename)
-	dest := s.storageClient.Bucket(
-		getBucketName()).Object(objectName).NewWriter(ctx)
+	var dest *storage.Writer
+	// use storage bucket supplied if supplied
+	if inp.IsBase64 != nil && inp.StorageBucket != nil {
+		dest = s.storageClient.Bucket(
+			*inp.StorageBucket).Object(objectName).NewWriter(ctx)
+	} else {
+		dest = s.storageClient.Bucket(
+			getBucketName()).Object(objectName).NewWriter(ctx)
+	}
 	source := bytes.NewReader(data)
 	if _, err = io.Copy(dest, source); err != nil {
 		helpers.RecordSpanError(span, err)
@@ -200,16 +207,34 @@ func (s ServiceUploadImpl) Upload(
 	)
 
 	id := ksuid.New().String()
-	u := &profileutils.Upload{
-		ID:          id,
-		Title:       inp.Title,
-		Creation:    time.Now(),
-		ContentType: inp.ContentType,
-		Language:    inp.Language,
-		Size:        len(data),
-		Hash:        hash,
-		URL:         url,
-		Base64data:  inp.Base64data,
+
+	var u *profileutils.Upload
+	// save only in GCP if IsBase64 bool is defined
+	if inp.IsBase64 != nil && inp.StorageBucket != nil {
+		u = &profileutils.Upload{
+			ID:          id,
+			Title:       inp.Title,
+			Creation:    time.Now(),
+			ContentType: inp.ContentType,
+			Language:    inp.Language,
+			Size:        len(data),
+			Hash:        hash,
+			URL:         url,
+		}
+
+	} else {
+		u = &profileutils.Upload{
+			ID:          id,
+			Title:       inp.Title,
+			Creation:    time.Now(),
+			ContentType: inp.ContentType,
+			Language:    inp.Language,
+			Size:        len(data),
+			Hash:        hash,
+			URL:         url,
+			Base64data:  inp.Base64data,
+		}
+
 	}
 
 	_, _, err = firebasetools.CreateNode(ctx, u)
